@@ -78,7 +78,7 @@ def evaluate(model, test_loader, criterion, device):
 
 def main():
 
-    # ---- Device selection for M2 Mac ----
+    # Device selection for M2 Mac
     if torch.backends.mps.is_available():
         device = torch.device("mps")
     else:
@@ -86,10 +86,10 @@ def main():
 
     print("Using device:", device)
 
-    # ---- Load dataset using your loader ----
+    # Load dataset using your loader 
     train_loader, test_loader = load_data()
 
-    # ---- Model, Loss, Optimizer ----
+    #  Model, Loss, Optimizer 
     model = CNN().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
