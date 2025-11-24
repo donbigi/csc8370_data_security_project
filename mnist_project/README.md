@@ -130,7 +130,7 @@ Using device: cpu
 
 ---
 
-## 📈 3. Expected Outcome
+## 3. Expected Outcome
 
 After running for **5 epochs**, you should expect results similar to the following:
 
