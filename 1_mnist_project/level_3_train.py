@@ -7,8 +7,17 @@ import torch.nn.functional as F
 import torch.nn as nn
 import copy
 
+# --------------------------
+#  Config for Level 3
+# --------------------------
+MALICIOUS_CLIENT_ID = 3       # which client becomes malicious
+ATTACK_START_ROUND = 3        # from this global epoch onward (1-based)
+Z_THRESHOLD = 2.5             # outlier threshold (mean + Z*std)
 
-# TODO: CNN model definition, same to the model in the level 1
+
+# --------------------------
+#  CNN model (same as level 1)
+# --------------------------
 class ConvNet(nn.Module):
     def __init__(self):
         super(ConvNet, self).__init__()
@@ -28,8 +37,6 @@ class ConvNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.dropout = nn.Dropout(0.5)
 
-        # After:
-        # conv1 -> conv2 -> pool -> conv3 -> pool
         # 28 → 28 → 14 → 14 → 7  (spatial)
         # Channels: 1 → 32 → 64 → 128
         # So features = 128 * 7 * 7 = 6272
@@ -51,7 +58,9 @@ class ConvNet(nn.Module):
         return x
 
 
-# Load data (each client will load its own data in a real FL scenario)
+# --------------------------
+#  Data loading
+# --------------------------
 def load_data(transform, datasets='MNIST'):
     if datasets == 'MNIST':
         train_dataset = torchvision.datasets.MNIST(
@@ -67,13 +76,14 @@ def load_data(transform, datasets='MNIST'):
     return train_dataset, test_dataset
 
 
-# Split the dataset into 'n_clients' partitions
 def partition_dataset(dataset, n_clients=10):
     split_size = len(dataset) // n_clients
     return random_split(dataset, [split_size] * n_clients)
 
 
-# TODO: define the client-side local training here
+# --------------------------
+#  Client-side local training
+# --------------------------
 def client_update(client_model, optimizer, train_loader, device, epochs=1):
     """
     Perform local training on a client's data.
@@ -91,41 +101,124 @@ def client_update(client_model, optimizer, train_loader, device, epochs=1):
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-    # no need to return: the model is updated in place
+    # model updated in place
 
 
-# TODO: define the server-side aggregation of client models here
-def server_aggregate(global_model, client_models):
+# --------------------------
+#  Malicious client behavior
+# --------------------------
+def make_malicious_update(client_model):
     """
-    FedAvg: average client model parameters into the global model,
-    then broadcast global weights back to all clients.
+    Overwrite the client's parameters with random values
+    to simulate a poisoned / falsified update.
     """
-    # Get current global state
+    with torch.no_grad():
+        for p in client_model.parameters():
+            # Random noise of similar scale to the parameter std (or 1 if std=0)
+            scale = p.data.std().item()
+            if scale == 0:
+                scale = 1.0
+            noise = torch.randn_like(p.data) * scale * 5.0   # amplified noise
+            p.data.copy_(noise)
+
+
+# --------------------------
+#  Helper: flatten model params
+# --------------------------
+def flatten_params(model):
+    """
+    Flatten model parameters into a single 1D tensor.
+    Used for distance-based outlier detection.
+    """
+    return torch.cat([p.data.view(-1) for p in model.parameters()])
+
+
+# --------------------------
+#  Malicious client detection
+# --------------------------
+def detect_malicious_clients(global_model, client_models, z_threshold=Z_THRESHOLD):
+    """
+    Detect malicious clients by looking for outliers in the
+    distance between each client's weights and the previous global model.
+    Returns a list of suspicious client indices.
+    """
+    global_vec = flatten_params(global_model)
+    dists = []
+
+    for idx, m in enumerate(client_models):
+        client_vec = flatten_params(m)
+        dist = torch.norm(client_vec - global_vec).item()
+        dists.append(dist)
+
+    dists_tensor = torch.tensor(dists)
+    mean = dists_tensor.mean().item()
+    std = dists_tensor.std(unbiased=False).item()
+
+    if std == 0:
+        # all clients identical → no outliers
+        threshold = mean * 1.2
+    else:
+        threshold = mean + z_threshold * std
+
+    suspicious = [idx for idx, d in enumerate(dists) if d > threshold]
+
+    print(f"  Distances from global: {[round(d, 4) for d in dists]}")
+    print(f"  Detection threshold: {threshold:.4f}")
+    if suspicious:
+        print(f"  [Detection] Suspicious clients this round: {suspicious}")
+    else:
+        print(f"  [Detection] No suspicious clients this round.")
+
+    return suspicious
+
+
+# --------------------------
+#  Server-side aggregation
+# --------------------------
+def server_aggregate(global_model, client_models, malicious_clients=None):
+    """
+    FedAvg with robustness: ignore clients flagged as malicious.
+    """
+    if malicious_clients is None:
+        malicious_clients = set()
+    else:
+        malicious_clients = set(malicious_clients)
+
+    all_indices = list(range(len(client_models)))
+    used_indices = [i for i in all_indices if i not in malicious_clients]
+
+    # Fallback: if everything got flagged, use all clients (don't break training)
+    if len(used_indices) == 0:
+        print("  [Warning] All clients flagged malicious; using all clients for this round.")
+        used_indices = all_indices
+
+    print(f"  Using clients for aggregation: {used_indices}")
+
     global_dict = global_model.state_dict()
     new_state_dict = copy.deepcopy(global_dict)
 
     with torch.no_grad():
         for key, param in global_dict.items():
-            # Collect the corresponding tensors from each client
-            client_params = [m.state_dict()[key] for m in client_models]
+            client_params = [client_models[i].state_dict()[key] for i in used_indices]
 
-            # Only average floating-point parameters; for others, just take the first
             if param.dtype.is_floating_point:
                 stacked = torch.stack(client_params, dim=0)
                 new_state_dict[key] = torch.mean(stacked, dim=0)
             else:
-                # e.g., num_batches_tracked for BatchNorm (int64)
+                # e.g., num_batches_tracked in BatchNorm
                 new_state_dict[key] = client_params[0]
 
-        # Load the averaged weights into the global model
+        # Update global model
         global_model.load_state_dict(new_state_dict)
 
-        # Broadcast the new global weights back to each client
+        # Broadcast back to all clients
         for m in client_models:
             m.load_state_dict(global_model.state_dict())
 
 
-# Test model on test dataset
+# --------------------------
+#  Evaluation
+# --------------------------
 def test_model(model, test_loader, device):
     model.eval()
     model.to(device)
@@ -140,40 +233,45 @@ def test_model(model, test_loader, device):
     return correct / total
 
 
-# Federated Learning process
+# --------------------------
+#  Federated Learning process
+# --------------------------
 def federated_learning(n_clients, global_epochs, local_epochs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # Set up the data transformation and load dataset
+    # Data
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,))
     ])
     train_dataset, test_dataset = load_data(transform)
 
-    # Partition the dataset for each client
     client_datasets = partition_dataset(train_dataset, n_clients)
     client_loaders = [
-        DataLoader(dataset, batch_size=50, shuffle=True)  # TODO: change the batch size here
+        DataLoader(dataset, batch_size=50, shuffle=True)
         for dataset in client_datasets
     ]
-    test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)  # TODO: change the batch size here
+    test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
 
-    # Initialize global model and n_clients client models
+    # Models
     global_model = ConvNet().to(device)
     client_models = [copy.deepcopy(global_model) for _ in range(n_clients)]
 
-    # Optimizers for client models
+    # Optimizers
     optimizers = [
-        torch.optim.Adam(model.parameters(), lr=0.0005)  # TODO: change the learning rate here for each client model
+        torch.optim.Adam(model.parameters(), lr=0.0005)
         for model in client_models
     ]
 
-    # Federated Learning process
-    for global_epoch in range(global_epochs):
-        print(f'Global Epoch {global_epoch + 1}/{global_epochs}')
+    confirmed_malicious = set()
+    print(f"Malicious client (ground truth): {MALICIOUS_CLIENT_ID}, "
+          f"becomes malicious from round {ATTACK_START_ROUND}.")
 
-        # Each client trains locally
+    # FL rounds
+    for global_epoch in range(global_epochs):
+        print(f'\n=== Global Epoch {global_epoch + 1}/{global_epochs} ===')
+
+        # Local training on each client
         for client_idx in range(n_clients):
             client_update(
                 client_models[client_idx],
@@ -183,17 +281,34 @@ def federated_learning(n_clients, global_epochs, local_epochs):
                 local_epochs
             )
 
-        # Server aggregates the models
-        server_aggregate(global_model, client_models)
+            # Simulate attack: from ATTACK_START_ROUND onward,
+            # the malicious client overwrites its weights with bogus ones.
+            if (global_epoch + 1) >= ATTACK_START_ROUND and client_idx == MALICIOUS_CLIENT_ID:
+                make_malicious_update(client_models[client_idx])
+                print(f"  [Attack] Client {client_idx} has sent a malicious update this round.")
 
-        # Evaluate global model on test dataset
+        # Detect malicious clients based on their updates
+        suspicious = detect_malicious_clients(global_model, client_models)
+        for idx in suspicious:
+            # Keep track of clients flagged over time
+            confirmed_malicious.add(idx)
+            if idx == MALICIOUS_CLIENT_ID:
+                print(f"  --> Correctly flagged the true malicious client: {idx}")
+
+        # Aggregate while ignoring confirmed malicious clients
+        server_aggregate(global_model, client_models, malicious_clients=confirmed_malicious)
+
+        # Evaluate global model
         test_accuracy = test_model(global_model, test_loader, device)
-        print(f'Global Model Test Accuracy after round {global_epoch + 1}: {test_accuracy:.4f}')
+        print(f'  Global Model Test Accuracy after round {global_epoch + 1}: {test_accuracy:.4f}')
 
-    # Save the final global model
-    torch.save(global_model.state_dict(), 'federated_model.pth')
-    print("Federated learning process completed.")
+    # Save final global model
+    torch.save(global_model.state_dict(), 'federated_model_level3.pth')
+    print("\nFederated learning with malicious client detection completed.")
+    print(f"Final flagged malicious clients: {sorted(list(confirmed_malicious))}")
 
 
 if __name__ == '__main__':
-    federated_learning(n_clients=10, global_epochs=10, local_epochs=2)  # TODO: only change the number of global epochs and local epochs here
+    # IMPORTANT: assignment says training runs for 10 epochs total.
+    # Here: 10 global epochs, 1 local epoch per round.
+    federated_learning(n_clients=10, global_epochs=10, local_epochs=1)
