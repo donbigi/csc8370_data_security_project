@@ -88,7 +88,7 @@ pip install torch torchvision torchaudio
 Your project should look like:
 
 ```bash
-project/
+mnist_project/
 │
 ├── main.py                 # main training script
 ├── dataloader4level1.py    # provided data loader
