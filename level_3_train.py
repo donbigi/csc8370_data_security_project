@@ -7,17 +7,17 @@ import torch.nn.functional as F
 import torch.nn as nn
 import copy
 
-# --------------------------
+
 #  Config for Level 3
-# --------------------------
+
 MALICIOUS_CLIENT_ID = 3       # which client becomes malicious
 ATTACK_START_ROUND = 3        # from this global epoch onward (1-based)
 Z_THRESHOLD = 2.5             # outlier threshold (mean + Z*std)
 
 
-# --------------------------
+
 #  CNN model (same as level 1)
-# --------------------------
+
 class ConvNet(nn.Module):
     def __init__(self):
         super(ConvNet, self).__init__()
@@ -58,9 +58,9 @@ class ConvNet(nn.Module):
         return x
 
 
-# --------------------------
+
 #  Data loading
-# --------------------------
+
 def load_data(transform, datasets='MNIST'):
     if datasets == 'MNIST':
         train_dataset = torchvision.datasets.MNIST(
@@ -81,9 +81,9 @@ def partition_dataset(dataset, n_clients=10):
     return random_split(dataset, [split_size] * n_clients)
 
 
-# --------------------------
+
 #  Client-side local training
-# --------------------------
+
 def client_update(client_model, optimizer, train_loader, device, epochs=1):
     """
     Perform local training on a client's data.
@@ -104,9 +104,9 @@ def client_update(client_model, optimizer, train_loader, device, epochs=1):
     # model updated in place
 
 
-# --------------------------
+
 #  Malicious client behavior
-# --------------------------
+
 def make_malicious_update(client_model):
     """
     Overwrite the client's parameters with random values
@@ -122,9 +122,9 @@ def make_malicious_update(client_model):
             p.data.copy_(noise)
 
 
-# --------------------------
+
 #  Helper: flatten model params
-# --------------------------
+
 def flatten_params(model):
     """
     Flatten model parameters into a single 1D tensor.
@@ -133,9 +133,9 @@ def flatten_params(model):
     return torch.cat([p.data.view(-1) for p in model.parameters()])
 
 
-# --------------------------
+
 #  Malicious client detection
-# --------------------------
+
 def detect_malicious_clients(global_model, client_models, z_threshold=Z_THRESHOLD):
     """
     Detect malicious clients by looking for outliers in the
@@ -172,9 +172,9 @@ def detect_malicious_clients(global_model, client_models, z_threshold=Z_THRESHOL
     return suspicious
 
 
-# --------------------------
+
 #  Server-side aggregation
-# --------------------------
+
 def server_aggregate(global_model, client_models, malicious_clients=None):
     """
     FedAvg with robustness: ignore clients flagged as malicious.
@@ -216,9 +216,9 @@ def server_aggregate(global_model, client_models, malicious_clients=None):
             m.load_state_dict(global_model.state_dict())
 
 
-# --------------------------
+
 #  Evaluation
-# --------------------------
+
 def test_model(model, test_loader, device):
     model.eval()
     model.to(device)
@@ -233,9 +233,9 @@ def test_model(model, test_loader, device):
     return correct / total
 
 
-# --------------------------
+
 #  Federated Learning process
-# --------------------------
+
 def federated_learning(n_clients, global_epochs, local_epochs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
