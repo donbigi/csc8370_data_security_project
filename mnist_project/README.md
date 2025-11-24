@@ -11,7 +11,7 @@ This project trains a **Convolutional Neural Network (CNN)** on the MNIST datase
 
 ### Main components
 
-### **1. Data Loading (centralized)**
+### **A. Data Loading (centralized)**
 
 * `dataloader4level1.py` loads MNIST using `torchvision.datasets.MNIST`.
 * Training data: **60,000 images**
@@ -26,7 +26,7 @@ All data is stored and processed **on one machine** (centralized learning).
 
 ---
 
-### **2. Model Definition (CNN)**
+### **B. Model Definition (CNN)**
 
 The model consists of:
 
@@ -40,7 +40,7 @@ This architecture achieves high accuracy for MNIST.
 
 ---
 
-### **3. Training Process**
+### **C. Training Process**
 
 * Uses **Adam optimizer** and **CrossEntropyLoss**.
 * Runs for **5 epochs**.
@@ -55,7 +55,7 @@ Runs on **MPS (Apple Silicon GPU)** if available, otherwise CPU.
 
 ---
 
-### **4. Evaluation**
+### **D. Evaluation**
 
 * Evaluates on the entire test dataset at once (1 batch).
 * Computes:
