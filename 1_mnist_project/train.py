@@ -38,7 +38,7 @@ def train_model(epochs=5, lr=1e-3, path="mnist_model.pth"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device:", device)
 
-    # Call without batch_size (your error)
+    # Call without batch_size
     loaders = load_data()
     train_loader, test_loader = extract_loaders(loaders)
 
