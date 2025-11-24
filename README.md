@@ -58,25 +58,17 @@ Example layout (adjust if your filenames differ):
 ```text
 .
 ├── level_1_train.py        # Level 1: centralized CNN on MNIST
-├── level_2_train.py             # Level 2: basic federated learning (FedAvg)
+├── level_2_train.py.py             # Level 2: basic federated learning (FedAvg)
 ├── level_3_train.py        # Level 3: robust FL with malicious client detection
 ├── data/                  # MNIST data (auto-created)
 └── README.md
 ```
 
-In your case, the files are:
-
-- **Level 1:** (e.g.) `train.py`
-- **Level 2:** `train_2.py`
-- **Level 3:** (e.g.) `train_3.py` or `level3_train.py`
-
-Update the names below to match your actual filenames.
-
 ---
 
 ## 4. Level 1 — Centralized CNN Training
 
-**File:** `level1_train.py` (or `train.py` in your repo)
+**File:** `level_1_train.py`
 
 This script:
 
@@ -92,9 +84,7 @@ This script:
 **Run:**
 
 ```bash
-python level1_train.py
-# or, if your file is named train.py
-python train.py
+python level_1_train.py
 ```
 
 **Expected behaviour (sample):**
@@ -116,7 +106,7 @@ python train.py
 
 ## 5. Level 2 — Basic Federated Learning (FedAvg)
 
-**File:** `train_2.py`
+**File:** `level_2_train.py`
 
 This script:
 
@@ -140,7 +130,7 @@ This script:
 **Run:**
 
 ```bash
-python train_2.py
+python level_2_train.py
 ```
 
 **Expected behaviour (sample):**
@@ -161,7 +151,7 @@ Global Model Test Accuracy after round 4: 0.9895
 
 ## 6. Level 3 — Robust FL with Malicious Client Detection
 
-**File:** `level3_train.py` (or your chosen filename)
+**File:** `level_3_train.py` (or your chosen filename)
 
 This script extends Level 2 with:
 
@@ -192,7 +182,7 @@ This script extends Level 2 with:
 **Run:**
 
 ```bash
-python level3_train.py
+python level_3_train.py
 # or python train_3.py, depending on your filename
 ```
 
@@ -231,7 +221,7 @@ This shows:
 
 ## 7. Notes & Tips
 
-- If you rename any files (`train.py`, `train_2.py`, `level3_train.py`, …), update the commands in this README accordingly.
+- If you rename any files (`train.py`, `level_2_train.py`, `level_3_train.py`, …), update the commands in this README accordingly.
 - MNIST will be downloaded automatically on first run; make sure you have an internet connection for that step.
 - For reproducibility, you can set random seeds (`torch.manual_seed`, `np.random.seed`, etc.), but this is not strictly required for basic functionality.
 - All three levels use the **same CNN architecture**, making it easy to compare centralized training vs. plain FL vs. robust FL.
