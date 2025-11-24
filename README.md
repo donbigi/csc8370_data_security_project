@@ -221,7 +221,7 @@ This shows:
 
 ## 7. Notes & Tips
 
-- If you rename any files (`train.py`, `level_2_train.py`, `level_3_train.py`, …), update the commands in this README accordingly.
+- If you rename any files (`level_1_train.py`, `level_2_train.py`, `level_3_train.py`, …), update the commands in this README accordingly.
 - MNIST will be downloaded automatically on first run; make sure you have an internet connection for that step.
 - For reproducibility, you can set random seeds (`torch.manual_seed`, `np.random.seed`, etc.), but this is not strictly required for basic functionality.
 - All three levels use the **same CNN architecture**, making it easy to compare centralized training vs. plain FL vs. robust FL.
