@@ -1,81 +1,100 @@
-# MNIST Centralized Machine Learning Classifier
+---
+
+# **MNIST Centralized Machine Learning Classifier**
 
 This project implements a **centralized deep learning model** to classify handwritten digits (0–9) from the **MNIST dataset** using **PyTorch**.
-All training is performed on a **single device** (CPU or Apple Silicon MPS GPU).
+All computation runs on a **single device** — CPU or Apple Silicon **MPS** GPU.
 
 ---
 
-## 1. What the Code Is Doing
+## **1. Overview**
 
-This project trains a **Convolutional Neural Network (CNN)** on the MNIST dataset to classify handwritten digits.
+The system performs:
 
-### Main components
+1. **Data loading** (provided separately)
+2. **CNN model definition**
+3. **Centralized training**
+4. **Evaluation on the full MNIST test set**
 
-### **A. Data Loading (centralized)**
-
-* `dataloader4level1.py` loads MNIST using `torchvision.datasets.MNIST`.
-* Training data: **60,000 images**
-* Testing data: **10,000 images**
-* Applies normalization and converts images to tensors.
-* Returns:
-
-  * `train_loader` → batches of size 50
-  * `test_loader` → a single batch containing all test samples
-
-All data is stored and processed **on one machine** (centralized learning).
+This setup demonstrates a straightforward centralized learning workflow.
 
 ---
 
-### **B. Model Definition (CNN)**
+## **2. Components**
 
-The model consists of:
+### **A. Data Loading (Provided)**
 
-* **Conv2D → ReLU**
-* **Conv2D → ReLU → MaxPool**
-* **MaxPool**
-* **Fully Connected Layer**
-* **Output Layer (10 classes)**
+Data is loaded through:
 
-This architecture achieves high accuracy for MNIST.
+```python
+from dataloader4level1 import load_data
+```
+
+This function returns:
+
+* `train_loader`
+* `test_loader`
+
+Both are fully prepared for centralized training.
+No manual preprocessing or dataset handling is required inside this project.
 
 ---
 
-### **C. Training Process**
+### **B. Convolutional Neural Network (CNN)**
 
-* Uses **Adam optimizer** and **CrossEntropyLoss**.
-* Runs for **5 epochs**.
-* Tracks:
+The classifier is a simple CNN optimized for MNIST:
 
-  * Training loss
-  * Training accuracy
-  * Test loss
-  * Test accuracy
+* Convolution layers with ReLU activation
+* MaxPooling
+* Fully-connected layers
+* Final output layer for 10 classes
 
-Runs on **MPS (Apple Silicon GPU)** if available, otherwise CPU.
+The architecture is lightweight and trains quickly with high accuracy.
+
+---
+
+### **C. Centralized Training Loop**
+
+The model is trained using:
+
+* **Adam optimizer**
+* **CrossEntropyLoss**
+* **5 epochs**
+* Automatic device selection:
+
+  * **MPS** (Apple Silicon GPU)
+  * **CPU**
+
+Metrics tracked per epoch:
+
+* Training loss
+* Training accuracy
+* Test loss
+* Test accuracy
 
 ---
 
 ### **D. Evaluation**
 
-* Evaluates on the entire test dataset at once (1 batch).
-* Computes:
+Evaluation is run on the **entire test set at once**:
 
-  * Test loss
-  * Test accuracy
+* Computes overall test accuracy
+* Computes final loss
+* Provides final performance summary
 
 ---
 
-## 2. How to Run the Code
+## **3. How to Run**
 
 ### **Step 1 — Install Dependencies**
 
-Run this:
+General:
 
 ```bash
 pip install torch torchvision
 ```
 
-On Apple Silicon (M1/M2/M3), use:
+Apple Silicon:
 
 ```bash
 pip install torch torchvision torchaudio
@@ -83,40 +102,15 @@ pip install torch torchvision torchaudio
 
 ---
 
-### **Step 2 — Project Structure**
+### **Step 2 — Run Training**
 
-Your project should look like:
-
-```bash
-mnist_project/
-│
-├── main.py                 # main training script
-├── dataloader4level1.py    # provided data loader
-└── data/
-```
-
----
-
-### **Step 3 — Run the Training Script**
-
-Inside your project directory:
+From the project directory:
 
 ```bash
 python main.py
 ```
 
-If using VS Code or PyCharm, make sure Python interpreter is correct.
-
----
-
-### **Step 4 — Device Detection**
-
-The script automatically chooses:
-
-* **MPS** → for Apple Silicon GPU
-* **CPU** → fallback
-
-You'll see:
+On startup, the script prints the device:
 
 ```python
 Using device: mps
@@ -130,48 +124,38 @@ Using device: cpu
 
 ---
 
-## 3. Expected Outcome
+## **4. Expected Results**
 
-After running for **5 epochs**, you should expect results similar to the following:
+Typical 5-epoch run:
 
 ```terminal
 Epoch 1/5
   Train Loss: 0.1346 | Train Acc: 95.98%
-  Test  Loss: 0.0478  | Test Acc: 98.44%
-
-Epoch 2/5
-  Train Loss: 0.0435 | Train Acc: 98.64%
-  Test  Loss: 0.0510  | Test Acc: 98.36%
-
-Epoch 3/5
-  Train Loss: 0.0292 | Train Acc: 99.06%
-  Test  Loss: 0.0433  | Test Acc: 98.59%
-
-Epoch 4/5
-  Train Loss: 0.0204 | Train Acc: 99.33%
-  Test  Loss: 0.0366  | Test Acc: 98.85%
-
+  Test  Loss: 0.0478 | Test Acc: 98.44%
+...
 Epoch 5/5
   Train Loss: 0.0155 | Train Acc: 99.49%
-  Test  Loss: 0.0260  | Test Acc: 99.23%
+  Test  Loss: 0.0260 | Test Acc: 99.23%
 ```
 
-### **Final performance benchmark:**
+### **Performance Summary**
 
-* **Train Accuracy:** ~99.4%
+* **Training Accuracy:** ~99.4%
 * **Test Accuracy:** ~98.5–99.3%
-* **Convergence:** Rapid
-* **Training time:** ~2–4 seconds per epoch on M2 GPU
-
-This is considered **excellent** for centralized MNIST training.
+* **Training Speed:** ~2–4 seconds per epoch on M2
+* **Stability:** High convergence
 
 ---
 
-## Summary
+## **5. Summary**
 
 This project demonstrates:
 
-* Centralized machine learning
-* Deep learning with CNNs
-* Fast training on Apple Silicon
-* High classification accuracy on MNIST
+* How centralized learning operates on a single device
+* CNN training using PyTorch
+* High-accuracy classification on MNIST
+* Efficient performance on Apple Silicon GPUs
+
+It serves as a clean baseline before extending into distributed, federated, or multi-device learning setups.
+
+---
