@@ -57,9 +57,9 @@ Example layout (adjust if your filenames differ):
 
 ```text
 .
-├── level1_train.py        # Level 1: centralized CNN on MNIST
-├── train_2.py             # Level 2: basic federated learning (FedAvg)
-├── level3_train.py        # Level 3: robust FL with malicious client detection
+├── level_1_train.py        # Level 1: centralized CNN on MNIST
+├── level_2_train.py             # Level 2: basic federated learning (FedAvg)
+├── level_3_train.py        # Level 3: robust FL with malicious client detection
 ├── data/                  # MNIST data (auto-created)
 └── README.md
 ```
